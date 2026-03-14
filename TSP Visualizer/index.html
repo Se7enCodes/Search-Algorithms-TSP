@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TSP Visualizer - Interactive Journey</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="background-animation"></div>
+    
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="title">
+                    <span class="title-main">TSP</span>
+                    <span class="title-subtitle">Visualizer</span>
+                </h1>
+                <p class="solutions-text">Travelling Salesman Problem Solutions using Hill-Climbing Algorithm</p>
+                <p class="problem-description">The Travelling Salesman Problem (TSP) seeks the shortest route visiting all cities exactly once and returning to the origin. This visualization demonstrates how the Hill-Climbing algorithm iteratively improves solutions by exploring neighboring routes.</p>
+                <p class="restart-explanation">The quality of the final solution heavily depends on the initial random configuration. Each restart generates a new starting point, which may lead to better or worse results. This demonstrates why multiple runs with different initial states are crucial for finding optimal solutions—some starting configurations converge to superior local optima than others.</p>
+                <div class="usage-steps">
+                    <p class="steps-title">How to Visualize:</p>
+                    <ol class="steps-list">
+                        <li>Adjust the number of cities using the slider to set problem complexity</li>
+                        <li>Click <strong>Start</strong> to begin the algorithm and watch it optimize the route</li>
+                        <li>Observe the status badge showing whether the algorithm is improving, searching, or has reached an optimum</li>
+                        <li>Monitor the distance graph below to see how the total distance decreases over iterations</li>
+                        <li>Use <strong>Pause</strong> to stop and <strong>Restart</strong> to generate a new random configuration—notice how different starting points lead to different solution qualities (previous runs are shown in lighter gray)</li>
+                    </ol>
+                </div>
+            </div>
+            <div class="theme-toggle-wrapper">
+                <div class="bulb-toggle" id="bulb-toggle">
+                    <!-- Bulb at top (ceiling) - cord hangs FROM it -->
+                    <div class="bulb-container">
+                        <svg class="bulb-icon" viewBox="0 0 100 100">
+                            <defs>
+                                <filter id="bulb-glow-filter">
+                                    <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+                                    <feMerge>
+                                        <feMergeNode in="coloredBlur"/>
+                                        <feMergeNode in="SourceGraphic"/>
+                                    </feMerge>
+                                </filter>
+                            </defs>
+                            <!-- Round CFL-style bulb top -->
+                            <circle class="bulb-glass" cx="50" cy="35" r="22" fill="currentColor" stroke="currentColor" stroke-width="1.5" opacity="0.2"/>
+                            <!-- Neck connecting to base -->
+                            <path class="bulb-neck" d="M 42 56 Q 42 62 46 66 L 46 76 Q 46 86 50 86 Q 54 86 54 76 L 54 66 Q 58 62 58 56" fill="currentColor" opacity="0.3"/>
+                            <!-- Metal base threads -->
+                            <rect class="bulb-base" x="44" y="76" width="12" height="3" rx="0.5" fill="currentColor" opacity="0.5"/>
+                            <rect class="bulb-base" x="43" y="80" width="14" height="3" rx="0.5" fill="currentColor" opacity="0.4"/>
+                            <rect class="bulb-base" x="44" y="84" width="12" height="2" rx="0.5" fill="currentColor" opacity="0.35"/>
+                            <!-- Filament inside -->
+                            <circle class="bulb-filament" cx="50" cy="35" r="20" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3"/>
+                            <path class="bulb-filament" d="M 50 18 Q 45 30 50 42 Q 55 30 50 18" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" fill="none" opacity="0.4"/>
+                            <!-- Glow halo -->
+                            <circle class="bulb-glow" cx="50" cy="35" r="24" fill="currentColor" opacity="0" filter="url(#bulb-glow-filter)"/>
+                        </svg>
+                    </div>
+                    <!-- Cord hanging down - user drags the end -->
+                    <div class="cord-wrapper">
+                        <svg class="bulb-cord" id="cord-svg" viewBox="0 0 50 60" preserveAspectRatio="none">
+                            <path class="cord-path" d="M 25 0 L 25 60" stroke="currentColor" stroke-width="2" fill="none"/>
+                        </svg>
+                        <div class="cord-end" id="cord-end" title="Pull down to toggle theme"></div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="content-row">
+                <!-- Canvas Section -->
+                <div class="canvas-section">
+                    <div class="canvas-wrapper">
+                        <canvas id="tsp-canvas"></canvas>
+                        <div class="canvas-overlay">
+                            <div class="status-badge" id="status-badge">
+                                <span class="status-text">Improving</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Control Panel -->
+                <div class="control-panel">
+                <!-- Stats Card -->
+                <div class="card stats-card">
+                    <h3 class="card-title">Statistics</h3>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-label">Iteration</span>
+                            <span class="stat-value" id="iteration">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Current Distance</span>
+                            <span class="stat-value" id="current-dist">0.0000</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Best Distance</span>
+                            <span class="stat-value highlight" id="best-dist">0.0000</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Improvement</span>
+                            <span class="stat-value" id="improvement">0.0%</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Stuck Count</span>
+                            <span class="stat-value" id="stuck-count">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Local Optima</span>
+                            <span class="stat-value" id="local-optima">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Controls Card -->
+                <div class="card controls-card">
+                    <h3 class="card-title">Controls</h3>
+                    <div class="controls-grid">
+                        <button class="btn btn-primary" id="start-btn">
+                            <span class="btn-text">Start</span>
+                        </button>
+                        <button class="btn btn-secondary" id="pause-btn">
+                            <span class="btn-text">Pause</span>
+                        </button>
+                        <button class="btn btn-accent" id="restart-btn">
+                            <span class="btn-text">Restart</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Settings Card -->
+                <div class="card settings-card">
+                    <h3 class="card-title">Settings</h3>
+                    <div class="settings-list">
+                        <div class="setting-item">
+                            <label class="setting-label">Number of Cities</label>
+                            <input type="range" id="city-count" class="slider" min="10" max="100" value="50">
+                            <span class="slider-value" id="city-count-value">50</span>
+                        </div>
+                        <div class="setting-item">
+                            <label class="setting-label">Animation Speed</label>
+                            <input type="range" id="speed" class="slider" min="1" max="10" value="5">
+                            <span class="slider-value" id="speed-value">5</span>
+                        </div>
+                        <div class="setting-item toggle-item">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="show-path" checked>
+                                <span class="toggle-slider-custom"></span>
+                                <span class="toggle-label">Show Path</span>
+                            </label>
+                        </div>
+                        <div class="setting-item toggle-item">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="show-cities" checked>
+                                <span class="toggle-slider-custom"></span>
+                                <span class="toggle-label">Show Cities</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                </div>
+            </div>
+            
+            <!-- Graph Section -->
+            <div class="graph-section">
+                <div class="card graph-card">
+                    <h3 class="card-title">Distance Over Time</h3>
+                    <canvas id="graph-canvas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="animations.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
